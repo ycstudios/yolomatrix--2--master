@@ -21,7 +21,7 @@ export default function RootLayout({
           <LanguageProvider>
             <Navbar />
             {children}
-             <TawkTo />
+             {/* <TawkTo /> */}
              <FloatingCallButton/>
           </LanguageProvider>
         </ThemeProvider>
