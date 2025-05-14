@@ -43,7 +43,6 @@ const OwnerPage = () => {
 
     // Remove remote stream
     if (remoteStream.current) {
-      remoteStream.current.getTracks().forEach(track => track.stop())
       remoteStream.current = null
     }
     
@@ -165,6 +164,7 @@ const OwnerPage = () => {
     }
   }, [handleWebSocketMessage, toast])
 
+  // Initialize WebRTC peer connection with all possible configuration options
   const initializePeerConnection = async () => {
     try {
       // Create a new RTCPeerConnection with more STUN servers
@@ -175,7 +175,11 @@ const OwnerPage = () => {
           { urls: "stun:stun2.l.google.com:19302" },
           { urls: "stun:stun3.l.google.com:19302" },
           { urls: "stun:stun4.l.google.com:19302" }
-        ]
+        ],
+        iceCandidatePoolSize: 10,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
+        sdpSemantics: 'unified-plan'
       }
       
       // Close any existing peer connection
@@ -189,19 +193,15 @@ const OwnerPage = () => {
       // Create remote stream first
       remoteStream.current = new MediaStream()
       
-      // Set the remoteStream as srcObject for the remote video element
+      // We won't set the remote stream here anymore
+      // We'll set it directly when we receive tracks in the ontrack handler
       if (remoteVideo.current) {
-        remoteVideo.current.srcObject = remoteStream.current
-        console.log("Remote video source set", remoteStream.current)
+        console.log("Preparing remote video element")
+        // We'll set srcObject when we receive tracks
       }
       
       // Get local media stream with error handling
       try {
-        // Stop any existing stream
-        if (localStream.current) {
-          localStream.current.getTracks().forEach(track => track.stop())
-        }
-        
         localStream.current = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
@@ -211,7 +211,7 @@ const OwnerPage = () => {
         console.error("Error accessing media devices:", mediaError)
         toast({
           title: "Camera/Microphone Error",
-          description: "Failed to access your camera or microphone",
+          description: "Failed to access your camera or microphone. Check permissions.",
           variant: "destructive",
         })
         return null
@@ -233,17 +233,16 @@ const OwnerPage = () => {
         })
       }
 
-      // Handle incoming tracks
+      // Handle incoming tracks - this is critical for receiving audio/video
       peerConnection.current.ontrack = (event) => {
         console.log("Received remote track:", event.track.kind, event.streams)
         
-        // Add each track from the remote stream to our remoteStream
-        event.streams[0].getTracks().forEach((track) => {
-          console.log("Adding remote track to remote stream:", track.kind)
-          if (remoteStream.current) {
-            remoteStream.current.addTrack(track)
-          }
-        })
+        // Important: Directly set the remote stream instead of adding tracks individually
+        if (remoteVideo.current && event.streams && event.streams[0]) {
+          console.log("Setting remote video srcObject directly from incoming stream")
+          remoteVideo.current.srcObject = event.streams[0];
+          remoteStream.current = event.streams[0];
+        }
       }
 
       // Handle ICE candidates
