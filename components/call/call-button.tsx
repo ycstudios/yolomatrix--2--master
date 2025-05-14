@@ -10,7 +10,10 @@ export default function CallButton() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_URL || "ws://localhost:3001"; // 🔥 fallback
+const signalingUrl =
+  process.env.NODE_ENV === "production"
+    ? "wss://web-bxz8.onrender.com" // ✅ hosted WebSocket server
+    : "ws://localhost:3001";         // ✅ local development
 
     if (!signalingUrl) {
       console.error("NEXT_PUBLIC_SIGNALING_URL is not set");
