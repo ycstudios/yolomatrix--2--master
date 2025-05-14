@@ -41,6 +41,21 @@ const OwnerPage = () => {
       localStream.current = null
     }
 
+    // Remove remote stream
+    if (remoteStream.current) {
+      remoteStream.current.getTracks().forEach(track => track.stop())
+      remoteStream.current = null
+    }
+    
+    // Clean up video elements
+    if (localVideo.current) {
+      localVideo.current.srcObject = null
+    }
+    
+    if (remoteVideo.current) {
+      remoteVideo.current.srcObject = null
+    }
+
     // Close peer connection
     if (peerConnection.current) {
       peerConnection.current.close()
@@ -152,22 +167,46 @@ const OwnerPage = () => {
 
   const initializePeerConnection = async () => {
     try {
-      // Create a new RTCPeerConnection
+      // Create a new RTCPeerConnection with more STUN servers
       const configuration = {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" }, 
-          { urls: "stun:stun1.l.google.com:19302" }
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+          { urls: "stun:stun3.l.google.com:19302" },
+          { urls: "stun:stun4.l.google.com:19302" }
         ]
       }
       
+      // Close any existing peer connection
+      if (peerConnection.current) {
+        peerConnection.current.close()
+      }
+      
       peerConnection.current = new RTCPeerConnection(configuration)
+      console.log("Peer connection initialized", peerConnection.current)
+      
+      // Create remote stream first
+      remoteStream.current = new MediaStream()
+      
+      // Set the remoteStream as srcObject for the remote video element
+      if (remoteVideo.current) {
+        remoteVideo.current.srcObject = remoteStream.current
+        console.log("Remote video source set", remoteStream.current)
+      }
       
       // Get local media stream with error handling
       try {
+        // Stop any existing stream
+        if (localStream.current) {
+          localStream.current.getTracks().forEach(track => track.stop())
+        }
+        
         localStream.current = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         })
+        console.log("Local media stream obtained:", localStream.current)
       } catch (mediaError) {
         console.error("Error accessing media devices:", mediaError)
         toast({
@@ -179,27 +218,28 @@ const OwnerPage = () => {
       }
 
       // Set local video stream
-      if (localVideo.current) {
+      if (localVideo.current && localStream.current) {
         localVideo.current.srcObject = localStream.current
+        console.log("Local video source set")
       }
 
       // Add local tracks to peer connection
-      localStream.current.getTracks().forEach((track) => {
-        if (localStream.current && peerConnection.current) {
-          peerConnection.current.addTrack(track, localStream.current)
-        }
-      })
-
-      // Create remote stream
-      remoteStream.current = new MediaStream()
-      if (remoteVideo.current) {
-        remoteVideo.current.srcObject = remoteStream.current
+      if (localStream.current) {
+        localStream.current.getTracks().forEach((track) => {
+          if (peerConnection.current && localStream.current) {
+            console.log("Adding track to peer connection:", track.kind)
+            peerConnection.current.addTrack(track, localStream.current)
+          }
+        })
       }
 
       // Handle incoming tracks
       peerConnection.current.ontrack = (event) => {
-        console.log("Received remote track", event.streams)
+        console.log("Received remote track:", event.track.kind, event.streams)
+        
+        // Add each track from the remote stream to our remoteStream
         event.streams[0].getTracks().forEach((track) => {
+          console.log("Adding remote track to remote stream:", track.kind)
           if (remoteStream.current) {
             remoteStream.current.addTrack(track)
           }
@@ -209,6 +249,7 @@ const OwnerPage = () => {
       // Handle ICE candidates
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate && ws.current && currentCaller) {
+          console.log("Sending ICE candidate to", currentCaller)
           ws.current.send(
             JSON.stringify({
               type: "ice-candidate",
@@ -217,6 +258,20 @@ const OwnerPage = () => {
               target: currentCaller,
             }),
           )
+        }
+      }
+
+      // Handle ICE connection state changes
+      peerConnection.current.oniceconnectionstatechange = () => {
+        console.log("ICE connection state:", peerConnection.current?.iceConnectionState)
+        if (peerConnection.current?.iceConnectionState === "failed" || 
+            peerConnection.current?.iceConnectionState === "disconnected") {
+          console.error("ICE connection failed or disconnected")
+          toast({
+            title: "Connection issue",
+            description: "Network connection problem detected",
+            variant: "destructive",
+          })
         }
       }
 
@@ -232,6 +287,11 @@ const OwnerPage = () => {
           })
           handleCallEnded()
         }
+      }
+
+      // Log negotiation needed events
+      peerConnection.current.onnegotiationneeded = () => {
+        console.log("Negotiation needed")
       }
 
       return peerConnection.current
@@ -278,17 +338,23 @@ const OwnerPage = () => {
     if (!incomingCall || !ws.current) return
 
     try {
+      console.log("Accepting call from", incomingCall.userId)
+      
       // Initialize WebRTC peer connection
       const pc = await initializePeerConnection()
       if (!pc) return
 
       // Set remote description from offer
+      console.log("Setting remote description", incomingCall.offer)
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer))
 
       // Create and send answer
+      console.log("Creating answer")
       const answer = await pc.createAnswer()
+      console.log("Setting local description", answer)
       await pc.setLocalDescription(answer)
 
+      console.log("Sending call accepted message")
       ws.current.send(
         JSON.stringify({
           type: "callAccepted",
@@ -335,9 +401,12 @@ const OwnerPage = () => {
 
   const handleIceCandidate = async (message: any) => {
     try {
-      if (!peerConnection.current) return
+      if (!peerConnection.current) {
+        console.warn("Received ICE candidate but peer connection is not initialized")
+        return
+      }
 
-      // Add ICE candidate
+      console.log("Adding ICE candidate", message.candidate)
       await peerConnection.current.addIceCandidate(new RTCIceCandidate(message.candidate))
     } catch (error) {
       console.error("Error handling ICE candidate:", error)
@@ -346,9 +415,12 @@ const OwnerPage = () => {
 
   const handleAnswer = async (message: any) => {
     try {
-      if (!peerConnection.current) return
+      if (!peerConnection.current) {
+        console.warn("Received answer but peer connection is not initialized")
+        return
+      }
 
-      // Set remote description from answer
+      console.log("Setting remote description from answer", message.answer)
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(message.answer))
     } catch (error) {
       console.error("Error handling answer:", error)
@@ -357,6 +429,7 @@ const OwnerPage = () => {
 
   const endCall = () => {
     if (ws.current && currentCaller) {
+      console.log("Ending call with", currentCaller)
       ws.current.send(
         JSON.stringify({
           type: "endCall",
