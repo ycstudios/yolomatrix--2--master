@@ -26,7 +26,8 @@ const OwnerPage = () => {
   const peerConnection = useRef<RTCPeerConnection | null>(null)
   const localStream = useRef<MediaStream | null>(null)
   const remoteStream = useRef<MediaStream | null>(null)
-  const remoteAudio = useRef<HTMLAudioElement | null>(null)
+  const localVideo = useRef<HTMLVideoElement | null>(null)
+  const remoteVideo = useRef<HTMLVideoElement | null>(null)
 
   // Create a stable reference to the handleCallEnded function
   const handleCallEnded = useCallback(() => {
@@ -161,20 +162,25 @@ const OwnerPage = () => {
       
       peerConnection.current = new RTCPeerConnection(configuration)
       
-      // Get local media stream with audio only
+      // Get local media stream with error handling
       try {
         localStream.current = await navigator.mediaDevices.getUserMedia({
-          video: false, // No video for voice-only calls
+          video: true,
           audio: true,
         })
       } catch (mediaError) {
         console.error("Error accessing media devices:", mediaError)
         toast({
-          title: "Microphone Error",
-          description: "Failed to access your microphone",
+          title: "Camera/Microphone Error",
+          description: "Failed to access your camera or microphone",
           variant: "destructive",
         })
         return null
+      }
+
+      // Set local video stream
+      if (localVideo.current) {
+        localVideo.current.srcObject = localStream.current
       }
 
       // Add local tracks to peer connection
@@ -186,8 +192,8 @@ const OwnerPage = () => {
 
       // Create remote stream
       remoteStream.current = new MediaStream()
-      if (remoteAudio.current) {
-        remoteAudio.current.srcObject = remoteStream.current
+      if (remoteVideo.current) {
+        remoteVideo.current.srcObject = remoteStream.current
       }
 
       // Handle incoming tracks
@@ -233,7 +239,7 @@ const OwnerPage = () => {
       console.error("Error initializing peer connection:", error)
       toast({
         title: "Connection Error",
-        description: "Failed to initialize voice call",
+        description: "Failed to initialize video call",
         variant: "destructive",
       })
       return null
@@ -251,7 +257,7 @@ const OwnerPage = () => {
       })
       toast({
         title: "Incoming Call",
-        description: `Voice call from ${message.userId}`,
+        description: `Call from ${message.userId}`,
       })
     } else {
       // Reject call if already in a call
@@ -295,7 +301,7 @@ const OwnerPage = () => {
       setCallState("connected")
       toast({
         title: "Call Connected",
-        description: `Voice call connected with ${incomingCall.userId}`,
+        description: `Connected with ${incomingCall.userId}`,
       })
     } catch (error) {
       console.error("Error accepting call:", error)
@@ -373,10 +379,7 @@ const OwnerPage = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Voice Support Dashboard</h1>
-      
-      {/* Hidden audio element for remote stream */}
-      <audio ref={remoteAudio} autoPlay />
+      <h1 className="text-3xl font-bold mb-6">Support Dashboard</h1>
       
       {!isConnected && (
         <div className="mb-6 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
@@ -418,7 +421,7 @@ const OwnerPage = () => {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Voice Call Center</h2>
+          <h2 className="text-xl font-semibold mb-4">Call Center</h2>
 
           {callState === "idle" ? (
             <div className="text-center p-8">
@@ -427,7 +430,7 @@ const OwnerPage = () => {
           ) : callState === "incoming" ? (
             <div className="text-center space-y-4">
               <p className="text-lg font-medium">
-                Incoming voice call from <span className="font-bold">{currentCaller}</span>
+                Incoming call from <span className="font-bold">{currentCaller}</span>
               </p>
               <div className="flex justify-center gap-4">
                 <Button
@@ -447,7 +450,7 @@ const OwnerPage = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-lg font-medium">
-                  Voice call connected with <span className="font-bold">{currentCaller}</span>
+                  Connected with <span className="font-bold">{currentCaller}</span>
                 </p>
                 <Button onClick={endCall} variant="destructive" size="sm" className="flex items-center gap-2">
                   <PhoneOff size={16} />
@@ -455,14 +458,28 @@ const OwnerPage = () => {
                 </Button>
               </div>
 
-              <div className="mt-4 p-6 bg-gray-100 rounded-md text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
-                    <Phone size={32} className="text-white" />
-                  </div>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="relative">
+                  <video
+                    ref={localVideo}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-48 bg-black rounded-md object-cover"
+                  />
+                  <span className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">You</span>
                 </div>
-                <p className="text-lg font-medium">Voice call in progress</p>
-                <p className="text-gray-600 mt-2">Call duration: Active</p>
+                <div className="relative">
+                  <video
+                    ref={remoteVideo}
+                    autoPlay
+                    playsInline
+                    className="w-full h-48 bg-black rounded-md object-cover"
+                  />
+                  <span className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">
+                    User
+                  </span>
+                </div>
               </div>
             </div>
           )}
