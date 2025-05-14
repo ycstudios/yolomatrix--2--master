@@ -1,13 +1,17 @@
 import type React from "react"
 import "@/app/globals.css"
-import { Inter } from "next/font/google"
+import { Inter } from 'next/font/google'
 import { ThemeProvider } from "@/components/theme-provider"
 import { LanguageProvider } from "@/contexts/language-context"
 import Navbar from "@/components/navbar"
-import TawkTo from "@/components/TawkTo" // 👈 Add this line
-import FloatingCallButton from '@/components/FloatingCallButton';
+import { Toaster } from "@/components/ui/toaster"
+import { CallProvider } from "@/components/call"
 
 const inter = Inter({ subsets: ["latin"] })
+
+export const metadata = {
+  generator: 'v0.dev'
+};
 
 export default function RootLayout({
   children,
@@ -21,18 +25,11 @@ export default function RootLayout({
           <LanguageProvider>
             <Navbar />
             {children}
-             {/* <TawkTo /> */}
-             <FloatingCallButton/>
+            <CallProvider>{children}</CallProvider>
+            <Toaster />
           </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>
   )
 }
-
-
-import './globals.css'
-
-export const metadata = {
-      generator: 'v0.dev'
-    };

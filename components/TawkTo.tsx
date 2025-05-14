@@ -4,7 +4,7 @@ import { useEffect } from "react"
 
 export default function TawkTo() {
   useEffect(() => {
-    const script = document.createElement("script")
+     const script = document.createElement("script");
     script.src = "https://embed.tawk.to/6821c760ca3aee190c0f991f/1ir1v5l7j"
     script.async = true
     script.charset = "UTF-8"
