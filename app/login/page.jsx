@@ -1,29 +1,83 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/contexts/language-context"
 import Logo from "@/components/logo"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const { theme } = useTheme()
   const { t } = useLanguage()
+  const router = useRouter()
+  const { toast } = useToast()
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle login logic here
-    console.log("Login submitted:", { email, password, rememberMe })
+    setError("")
+    setIsLoading(true)
+    
+    try {
+      // Connect to the API endpoint
+      const response = await fetch("https://yolo-matrix.onrender.com/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: "include", // Include cookies in the request
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed")
+      }
+      
+      // Handle successful login
+      if (data.token) {
+        // Store token in localStorage or secure storage
+        if (rememberMe) {
+          localStorage.setItem("authToken", data.token)
+        } else {
+          sessionStorage.setItem("authToken", data.token)
+        }
+        
+        // Store user info if provided
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user))
+        }
+        
+        toast({
+          title: t("login.successTitle"),
+          description: t("login.successMessage"),
+          variant: "success",
+        })
+        
+        // Redirect to dashboard or home page
+        router.push("/dashboard")
+      }
+    } catch (err) {
+      console.error("Login error:", err)
+      setError(err.message || "Failed to login. Please check your credentials and try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const togglePasswordVisibility = () => {
@@ -33,9 +87,17 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full flex flex-col bg-gray-50 dark:bg-gray-950">
       {/* Header with Back Button */}
-
-
-
+      <header className="p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="flex items-center text-gray-600 dark:text-gray-400"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          {t("common.back")}
+        </Button>
+      </header>
       
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -49,6 +111,13 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-6">
               {t("login.welcome")}
             </h1>
+            
+            {/* Error Message */}
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -64,6 +133,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("login.emailPlaceholder")}
                   className="w-full rounded-lg border-gray-300 dark:border-gray-700 focus:ring-blue-600 dark:focus:ring-blue-500"
+                  disabled={isLoading}
                   required
                 />
               </div>
@@ -86,12 +156,14 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("login.passwordPlaceholder")}
                     className="w-full rounded-lg border-gray-300 dark:border-gray-700 focus:ring-blue-600 dark:focus:ring-blue-500 pr-10"
+                    disabled={isLoading}
                     required
                   />
                   <button
                     type="button"
                     onClick={togglePasswordVisibility}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -110,6 +182,7 @@ export default function LoginPage() {
                     checked={rememberMe}
                     onCheckedChange={setRememberMe}
                     className="text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    disabled={isLoading}
                   />
                   <Label 
                     htmlFor="remember" 
@@ -124,8 +197,16 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full py-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                disabled={isLoading}
               >
-                {t("login.signIn")}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("common.loading")}
+                  </>
+                ) : (
+                  t("login.signIn")
+                )}
               </Button>
               
               {/* Sign Up Link */}
@@ -158,8 +239,11 @@ export default function LoginPage() {
             
             <div className="mt-6 grid grid-cols-2 gap-3">
               <Button
+                type="button"
                 variant="outline"
                 className="py-5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                onClick={() => handleSocialLogin("google")}
+                disabled={isLoading}
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -183,8 +267,11 @@ export default function LoginPage() {
                 Google
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 className="py-5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                onClick={() => handleSocialLogin("twitter")}
+                disabled={isLoading}
               >
                 <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84"></path>

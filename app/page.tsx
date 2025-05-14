@@ -16,8 +16,6 @@ export default function Home() {
       <SearchForm />
       <TravelPackages/>
       <LuxuryCollection />
-  
-      
       <WhyChooseUs />
       <ClientShowcase/>
       <Footer />

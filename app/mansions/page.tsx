@@ -11,7 +11,7 @@ import Footer from "@/components/footer"
 import { useSpring, animated, config } from "react-spring"
 import { motion } from "framer-motion"
 
-// Mock data for mansions
+// Mock data for mansions (fallback)
 export const mansionsData: CategoryItemProps[] = [
   {
     id: "beverly-hills-estate",
@@ -98,7 +98,10 @@ export const mansionsData: CategoryItemProps[] = [
 
 export default function MansionsPage() {
   const { t } = useLanguage()
+  const [mansions, setMansions] = useState<CategoryItemProps[]>(mansionsData)
   const [filteredMansions, setFilteredMansions] = useState<CategoryItemProps[]>(mansionsData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -119,6 +122,35 @@ export default function MansionsPage() {
     translateY: 0,
     config: { mass: 1, tension: 280, friction: 60 }
   }))
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchMansions = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const response = await fetch('https://yolo-matrix.onrender.com/mansions')
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        setMansions(data)
+        setFilteredMansions(data)
+        
+      } catch (err) {
+        console.error("Error fetching mansions data:", err)
+        setError("Failed to load mansions data from API. Using fallback data.")
+        // Keep using the fallback data already set in state
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchMansions()
+  }, [])
 
   // Handle scroll events with passive listener for performance
   useEffect(() => {
@@ -159,8 +191,9 @@ export default function MansionsPage() {
     }
   }, [])
 
+  // Apply filters to mansions
   useEffect(() => {
-    let filtered = [...mansionsData]
+    let filtered = [...mansions]
 
     // Filter by price
     filtered = filtered.filter(
@@ -169,12 +202,16 @@ export default function MansionsPage() {
 
     // Filter by amenities
     if (filters.amenities.length > 0) {
-      filtered = filtered.filter((mansion) => filters.amenities.every((amenity) => mansion.amenities.includes(amenity)))
+      filtered = filtered.filter((mansion) => 
+        mansion.amenities && filters.amenities.every((amenity) => mansion.amenities.includes(amenity))
+      )
     }
 
     // Filter by location
     if (filters.locations.length > 0) {
-      filtered = filtered.filter((mansion) => filters.locations.some((loc) => mansion.location.includes(loc)))
+      filtered = filtered.filter((mansion) => 
+        mansion.location && filters.locations.some((loc) => mansion.location.includes(loc))
+      )
     }
 
     // Sort
@@ -194,7 +231,7 @@ export default function MansionsPage() {
     }
 
     setFilteredMansions(filtered)
-  }, [filters])
+  }, [filters, mansions])
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters)
@@ -301,6 +338,13 @@ export default function MansionsPage() {
       {/* Mansions Content */}
       <section className="py-16 bg-white dark:bg-black">
         <div className="container mx-auto px-4">
+          {/* Display error message if API fetch failed */}
+          {error && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300">
+              <p>{error}</p>
+            </div>
+          )}
+          
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar Filter */}
             <div className="lg:w-1/4">
@@ -316,7 +360,11 @@ export default function MansionsPage() {
                 </p>
               </div>
 
-              {filteredMansions.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                </div>
+              ) : filteredMansions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredMansions.map((mansion, index) => (
                     <motion.div 

@@ -9,88 +9,81 @@ import {
   Search, Filter, RefreshCw, Download, AlertTriangle
 } from "lucide-react";
 import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
+  Pagination, PaginationContent, PaginationEllipsis, PaginationItem,
+  PaginationLink, PaginationNext, PaginationPrevious
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Sample data for charts
-const revenueData = [
-  { name: 'Jan', amount: 125000 },
-  { name: 'Feb', amount: 175000 },
-  { name: 'Mar', amount: 225000 },
-  { name: 'Apr', amount: 300000 },
-  { name: 'May', amount: 375000 },
-];
+// Fallback data in case the API fails
+const fallbackData = {
+  revenueData: [
+    { name: 'Jan', amount: 125000 },
+    { name: 'Feb', amount: 175000 },
+    { name: 'Mar', amount: 225000 },
+    { name: 'Apr', amount: 300000 },
+    { name: 'May', amount: 375000 },
+  ],
+  userGrowthData: [
+    { name: 'Jan', users: 1200 },
+    { name: 'Feb', users: 1450 },
+    { name: 'Mar', users: 1600 },
+    { name: 'Apr', users: 1800 },
+    { name: 'May', users: 2100 },
+  ],
+  bookingData: [
+    { name: 'Mon', bookings: 45 },
+    { name: 'Tue', bookings: 52 },
+    { name: 'Wed', bookings: 49 },
+    { name: 'Thu', bookings: 63 },
+    { name: 'Fri', bookings: 75 },
+    { name: 'Sat', bookings: 82 },
+    { name: 'Sun', bookings: 70 },
+  ],
+  listings: [
+    { id: 1, name: "Luxury Villa in Goa", status: "Active", views: 542, createdAt: "2025-04-15" },
+    { id: 2, name: "Beachfront Apartment", status: "Pending", views: 321, createdAt: "2025-04-12" },
+    { id: 3, name: "Mountain Retreat", status: "Active", views: 421, createdAt: "2025-04-10" },
+    { id: 4, name: "City Center Loft", status: "Active", views: 289, createdAt: "2025-04-08" },
+    { id: 5, name: "Riverside Cottage", status: "Inactive", views: 176, createdAt: "2025-04-05" },
+  ],
+  users: [
+    { id: 1, name: "Rajesh Kumar", email: "rajesh@example.com", status: "Active", joinDate: "2025-03-12" },
+    { id: 2, name: "Priya Sharma", email: "priya@example.com", status: "Active", joinDate: "2025-03-15" },
+    { id: 3, name: "Amit Singh", email: "amit@example.com", status: "Banned", joinDate: "2025-02-28" },
+    { id: 4, name: "Sneha Gupta", email: "sneha@example.com", status: "Active", joinDate: "2025-04-05" },
+    { id: 5, name: "Karan Malhotra", email: "karan@example.com", status: "Inactive", joinDate: "2025-03-22" },
+  ],
+  payouts: [
+    { id: 1, host: "Vikram Mehta", amount: "₹24,500", status: "Processed", date: "2025-04-15" },
+    { id: 2, host: "Neha Gupta", amount: "₹18,750", status: "Pending", date: "2025-04-16" },
+    { id: 3, host: "Sunil Patel", amount: "₹32,000", status: "Processing", date: "2025-04-14" },
+    { id: 4, host: "Meera Shah", amount: "₹15,800", status: "Processed", date: "2025-04-13" },
+    { id: 5, host: "Arjun Nair", amount: "₹21,350", status: "Pending", date: "2025-04-16" },
+  ],
+  reports: [
+    { id: 1, type: "Property Complaint", status: "New", priority: "High", date: "2025-04-15" },
+    { id: 2, type: "Payment Issue", status: "In Progress", priority: "Medium", date: "2025-04-14" },
+    { id: 3, type: "User Complaint", status: "Resolved", priority: "Low", date: "2025-04-12" },
+    { id: 4, type: "Technical Issue", status: "New", priority: "High", date: "2025-04-15" },
+    { id: 5, type: "Booking Dispute", status: "In Progress", priority: "Medium", date: "2025-04-13" },
+  ],
+  stats: {
+    totalBookings: 1245,
+    bookingGrowth: 12,
+    revenue: 375000,
+    revenueGrowth: 25,
+    userGrowth: 8.5,
+    newUsers: 245
+  }
+};
 
-const userGrowthData = [
-  { name: 'Jan', users: 1200 },
-  { name: 'Feb', users: 1450 },
-  { name: 'Mar', users: 1600 },
-  { name: 'Apr', users: 1800 },
-  { name: 'May', users: 2100 },
-];
-
-const bookingData = [
-  { name: 'Mon', bookings: 45 },
-  { name: 'Tue', bookings: 52 },
-  { name: 'Wed', bookings: 49 },
-  { name: 'Thu', bookings: 63 },
-  { name: 'Fri', bookings: 75 },
-  { name: 'Sat', bookings: 82 },
-  { name: 'Sun', bookings: 70 },
-];
-
-// Sample data for tabs
-const listings = [
-  { id: 1, name: "Luxury Villa in Goa", status: "Active", views: 542, createdAt: "2025-04-15" },
-  { id: 2, name: "Beachfront Apartment", status: "Pending", views: 321, createdAt: "2025-04-12" },
-  { id: 3, name: "Mountain Retreat", status: "Active", views: 421, createdAt: "2025-04-10" },
-  { id: 4, name: "City Center Loft", status: "Active", views: 289, createdAt: "2025-04-08" },
-  { id: 5, name: "Riverside Cottage", status: "Inactive", views: 176, createdAt: "2025-04-05" },
-  { id: 6, name: "Heritage Haveli Suite", status: "Active", views: 398, createdAt: "2025-04-02" },
-];
-
-const users = [
-  { id: 1, name: "Rajesh Kumar", email: "rajesh@example.com", status: "Active", joinDate: "2025-03-12" },
-  { id: 2, name: "Priya Sharma", email: "priya@example.com", status: "Active", joinDate: "2025-03-15" },
-  { id: 3, name: "Amit Singh", email: "amit@example.com", status: "Banned", joinDate: "2025-02-28" },
-  { id: 4, name: "Sneha Gupta", email: "sneha@example.com", status: "Active", joinDate: "2025-04-05" },
-  { id: 5, name: "Karan Malhotra", email: "karan@example.com", status: "Inactive", joinDate: "2025-03-22" },
-  { id: 6, name: "Neha Reddy", email: "neha@example.com", status: "Active", joinDate: "2025-04-10" },
-];
-
-const payouts = [
-  { id: 1, host: "Vikram Mehta", amount: "₹24,500", status: "Processed", date: "2025-04-15" },
-  { id: 2, host: "Neha Gupta", amount: "₹18,750", status: "Pending", date: "2025-04-16" },
-  { id: 3, host: "Sunil Patel", amount: "₹32,000", status: "Processing", date: "2025-04-14" },
-  { id: 4, host: "Meera Shah", amount: "₹15,800", status: "Processed", date: "2025-04-13" },
-  { id: 5, host: "Arjun Nair", amount: "₹21,350", status: "Pending", date: "2025-04-16" },
-  { id: 6, host: "Divya Chauhan", amount: "₹28,600", status: "Processing", date: "2025-04-15" },
-];
-
-const reports = [
-  { id: 1, type: "Property Complaint", status: "New", priority: "High", date: "2025-04-15" },
-  { id: 2, type: "Payment Issue", status: "In Progress", priority: "Medium", date: "2025-04-14" },
-  { id: 3, type: "User Complaint", status: "Resolved", priority: "Low", date: "2025-04-12" },
-  { id: 4, type: "Technical Issue", status: "New", priority: "High", date: "2025-04-15" },
-  { id: 5, type: "Booking Dispute", status: "In Progress", priority: "Medium", date: "2025-04-13" },
-  { id: 6, type: "Security Concern", status: "New", priority: "High", date: "2025-04-16" },
-];
+// API base URL
+const API_URL = "https://yolo-matrix.onrender.com";
 
 export default function AdminDashboard() {
   // State management
@@ -100,40 +93,86 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [dashboardData, setDashboardData] = useState(fallbackData);
+  const [error, setError] = useState(null);
+  
   const itemsPerPage = 5;
 
-  // Simulate data loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  // Fetch data from API
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch different data types in parallel
+      const [revenueRes, bookingsRes, usersRes, listingsRes, payoutsRes, reportsRes, statsRes] = await Promise.allSettled([
+        fetch(`${API_URL}/dashboard/revenue`),
+        fetch(`${API_URL}/dashboard/bookings`),
+        fetch(`${API_URL}/dashboard/users`),
+        fetch(`${API_URL}/dashboard/listings`),
+        fetch(`${API_URL}/dashboard/payouts`),
+        fetch(`${API_URL}/dashboard/reports`),
+        fetch(`${API_URL}/dashboard/stats`)
+      ]);
+      
+      // Process results and use fallbacks where needed
+      const revenue = revenueRes.status === 'fulfilled' && revenueRes.value.ok ? await revenueRes.value.json() : fallbackData.revenueData;
+      const bookings = bookingsRes.status === 'fulfilled' && bookingsRes.value.ok ? await bookingsRes.value.json() : fallbackData.bookingData;
+      const users = usersRes.status === 'fulfilled' && usersRes.value.ok ? await usersRes.value.json() : fallbackData.users;
+      const listings = listingsRes.status === 'fulfilled' && listingsRes.value.ok ? await listingsRes.value.json() : fallbackData.listings;
+      const payouts = payoutsRes.status === 'fulfilled' && payoutsRes.value.ok ? await payoutsRes.value.json() : fallbackData.payouts;
+      const reports = reportsRes.status === 'fulfilled' && reportsRes.value.ok ? await reportsRes.value.json() : fallbackData.reports;
+      const stats = statsRes.status === 'fulfilled' && statsRes.value.ok ? await statsRes.value.json() : fallbackData.stats;
+      
+      setDashboardData({
+        revenueData: revenue,
+        bookingData: bookings,
+        users,
+        listings,
+        payouts,
+        reports,
+        stats
+      });
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to fetch dashboard data. Using fallback data.");
+      // Keep using fallback data which is already set initially
+    } finally {
       setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
 
-  // Simulate refresh action
+  // Refresh data handler
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
+    fetchDashboardData().finally(() => {
       setRefreshing(false);
-    }, 1000);
+    });
   };
 
   // Filter data based on search and status
   const filterData = (data, type) => {
+    if (!data) return [];
     let filteredData = [...data];
     
     // Apply search filter
     if (searchTerm) {
       filteredData = filteredData.filter(item => {
+        const searchLower = searchTerm.toLowerCase();
         if (type === "listings") {
-          return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+          return item.name?.toLowerCase().includes(searchLower);
         } else if (type === "users") {
-          return item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                 item.email.toLowerCase().includes(searchTerm.toLowerCase());
+          return item.name?.toLowerCase().includes(searchLower) || 
+                 item.email?.toLowerCase().includes(searchLower);
         } else if (type === "payouts") {
-          return item.host.toLowerCase().includes(searchTerm.toLowerCase());
+          return item.host?.toLowerCase().includes(searchLower);
         } else if (type === "reports") {
-          return item.type.toLowerCase().includes(searchTerm.toLowerCase());
+          return item.type?.toLowerCase().includes(searchLower);
         }
         return true;
       });
@@ -141,7 +180,9 @@ export default function AdminDashboard() {
     
     // Apply status filter
     if (statusFilter !== "all") {
-      filteredData = filteredData.filter(item => item.status.toLowerCase() === statusFilter.toLowerCase());
+      filteredData = filteredData.filter(item => 
+        item.status?.toLowerCase() === statusFilter.toLowerCase()
+      );
     }
     
     return filteredData;
@@ -155,9 +196,9 @@ export default function AdminDashboard() {
     return filteredData.slice(startIndex, endIndex);
   };
 
-  // Format large numbers to Indian format
+  // Format currency
   const formatIndianCurrency = (value) => {
-    return `₹${value.toLocaleString('en-IN')}`;
+    return `₹${value?.toLocaleString('en-IN') || '0'}`;
   };
 
   // Status badge component
@@ -192,13 +233,124 @@ export default function AdminDashboard() {
         <Skeleton className="h-10 w-1/4" />
         <Skeleton className="h-10 w-1/4" />
       </div>
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
+      {[...Array(5)].map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full" />
+      ))}
     </div>
   );
+
+  // Render a data table
+  const DataTable = ({ data, columns, type }) => {
+    if (!data || data.length === 0) {
+      return <p className="text-center py-4">No data available</p>;
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map((col, index) => (
+                <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {col.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {getPaginatedData(data, type).map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50">
+                {columns.map((col, index) => (
+                  <td key={index} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {col.render ? col.render(item) : item[col.field]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Table column definitions for each tab
+  const listingsColumns = [
+    { field: 'id', header: 'ID' },
+    { field: 'name', header: 'Property Name', render: item => (
+      <span className="font-medium text-gray-900">{item.name}</span>
+    )},
+    { field: 'status', header: 'Status', render: item => (
+      <StatusBadge status={item.status} type="status" />
+    )},
+    { field: 'views', header: 'Views' },
+    { field: 'createdAt', header: 'Created' },
+    { field: 'actions', header: 'Actions', render: () => (
+      <div className="flex space-x-2">
+        <Button variant="ghost" size="sm">Edit</Button>
+        <Button variant="ghost" size="sm" className="text-red-600">Delete</Button>
+      </div>
+    )}
+  ];
+
+  const usersColumns = [
+    { field: 'id', header: 'ID' },
+    { field: 'name', header: 'Name', render: item => (
+      <span className="font-medium text-gray-900">{item.name}</span>
+    )},
+    { field: 'email', header: 'Email' },
+    { field: 'status', header: 'Status', render: item => (
+      <StatusBadge status={item.status} type="status" />
+    )},
+    { field: 'joinDate', header: 'Join Date' },
+    { field: 'actions', header: 'Actions', render: () => (
+      <div className="flex space-x-2">
+        <Button variant="ghost" size="sm">Edit</Button>
+        <Button variant="ghost" size="sm" className="text-red-600">Ban</Button>
+      </div>
+    )}
+  ];
+
+  const payoutsColumns = [
+    { field: 'id', header: 'ID' },
+    { field: 'host', header: 'Host', render: item => (
+      <span className="font-medium text-gray-900">{item.host}</span>
+    )},
+    { field: 'amount', header: 'Amount' },
+    { field: 'status', header: 'Status', render: item => (
+      <StatusBadge status={item.status} type="status" />
+    )},
+    { field: 'date', header: 'Date' },
+    { field: 'actions', header: 'Actions', render: () => (
+      <div className="flex space-x-2">
+        <Button variant="ghost" size="sm">View</Button>
+        <Button variant="ghost" size="sm" className="text-green-600">Process</Button>
+      </div>
+    )}
+  ];
+
+  const reportsColumns = [
+    { field: 'id', header: 'ID' },
+    { field: 'type', header: 'Type', render: item => (
+      <span className="font-medium text-gray-900">{item.type}</span>
+    )},
+    { field: 'status', header: 'Status', render: item => (
+      <StatusBadge status={item.status} type="status" />
+    )},
+    { field: 'priority', header: 'Priority', render: item => (
+      <StatusBadge status={item.priority} type="priority" />
+    )},
+    { field: 'date', header: 'Date' },
+    { field: 'actions', header: 'Actions', render: () => (
+      <div className="flex space-x-2">
+        <Button variant="ghost" size="sm">View</Button>
+        <Button variant="ghost" size="sm" className="text-blue-600">Assign</Button>
+      </div>
+    )}
+  ];
+
+  const highPriorityReports = dashboardData.reports?.filter(report => 
+    report.priority === "High" && report.status === "New"
+  ) || [];
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 bg-gray-50 min-h-screen">
@@ -220,14 +372,24 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Alert for new reports - only show if there are high priority new reports */}
-      {reports.some(report => report.priority === "High" && report.status === "New") && (
+      {/* Error display */}
+      {error && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4 rounded-md">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+            <p className="text-sm text-yellow-700">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Alert for high priority reports */}
+      {highPriorityReports.length > 0 && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-md">
           <div className="flex items-center">
             <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
             <div>
               <p className="text-sm text-red-700 font-medium">
-                You have {reports.filter(r => r.priority === "High" && r.status === "New").length} high priority report(s) that need your attention.
+                You have {highPriorityReports.length} high priority report(s) that need your attention.
               </p>
               <Button variant="link" className="p-0 h-auto text-red-700 hover:text-red-900" onClick={() => setActiveTab("reports")}>
                 View Reports
@@ -241,10 +403,9 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
           <>
-            <Skeleton className="h-32 w-full rounded-lg" />
-            <Skeleton className="h-32 w-full rounded-lg" />
-            <Skeleton className="h-32 w-full rounded-lg" />
-            <Skeleton className="h-32 w-full rounded-lg" />
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-lg" />
+            ))}
           </>
         ) : (
           <>
@@ -253,9 +414,9 @@ export default function AdminDashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Total Bookings</p>
-                    <h2 className="text-3xl font-bold mt-1">1,245</h2>
+                    <h2 className="text-3xl font-bold mt-1">{dashboardData.stats?.totalBookings}</h2>
                     <p className="text-sm text-green-600 flex items-center mt-1">
-                      <ArrowUpRight className="w-4 h-4 mr-1" /> +12% from last month
+                      <ArrowUpRight className="w-4 h-4 mr-1" /> +{dashboardData.stats?.bookingGrowth}% from last month
                     </p>
                   </div>
                   <div className="bg-blue-100 p-2 rounded-lg">
@@ -275,9 +436,9 @@ export default function AdminDashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Revenue (This Month)</p>
-                    <h2 className="text-3xl font-bold mt-1">{formatIndianCurrency(375000)}</h2>
+                    <h2 className="text-3xl font-bold mt-1">{formatIndianCurrency(dashboardData.stats?.revenue)}</h2>
                     <p className="text-sm text-green-600 flex items-center mt-1">
-                      <ArrowUpRight className="w-4 h-4 mr-1" /> +25% from last month
+                      <ArrowUpRight className="w-4 h-4 mr-1" /> +{dashboardData.stats?.revenueGrowth}% from last month
                     </p>
                   </div>
                   <div className="bg-green-100 p-2 rounded-lg">
@@ -295,18 +456,13 @@ export default function AdminDashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">User Growth</p>
-                    <h2 className="text-3xl font-bold mt-1">+8.5%</h2>
+                    <h2 className="text-3xl font-bold mt-1">+{dashboardData.stats?.userGrowth}%</h2>
                     <p className="text-sm text-green-600 flex items-center mt-1">
-                      <ArrowUpRight className="w-4 h-4 mr-1" /> 245 new users
+                      <ArrowUpRight className="w-4 h-4 mr-1" /> {dashboardData.stats?.newUsers} new users
                     </p>
                   </div>
                   <div className="bg-purple-100 p-2 rounded-lg">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <Users className="h-6 w-6 text-purple-600" />
                   </div>
                 </div>
               </CardContent>
@@ -362,7 +518,7 @@ export default function AdminDashboard() {
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={revenueData}
+                      data={dashboardData.revenueData}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#EEE" />
@@ -402,7 +558,7 @@ export default function AdminDashboard() {
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={bookingData}
+                      data={dashboardData.bookingData}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#EEE" />
@@ -413,8 +569,7 @@ export default function AdminDashboard() {
                       <Bar 
                         dataKey="bookings" 
                         fill="#8B5CF6" 
-                        barSize={30} 
-                        radius={[4, 4, 0, 0]}
+                        barSize={30}radius={4}
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -425,37 +580,21 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Tabs Section */}
-      <Card className="shadow-sm">
-        <CardContent className="p-4">
-          <Tabs defaultValue="listings" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6 flex flex-wrap">
-              <TabsTrigger value="listings" className="flex items-center">
-                <FileText className="w-4 h-4 mr-2" />
-                Manage Listings
-              </TabsTrigger>
-              <TabsTrigger value="users" className="flex items-center">
-                <Users className="w-4 h-4 mr-2" />
-                Manage Users
-              </TabsTrigger>
-              <TabsTrigger value="payouts" className="flex items-center">
-                <CreditCard className="w-4 h-4 mr-2" />
-                Payments & Payouts
-              </TabsTrigger>
-              <TabsTrigger value="reports" className="flex items-center">
-                <FileText className="w-4 h-4 mr-2" />
-                Reports
-                {reports.filter(r => r.status === "New").length > 0 && (
-                  <Badge className="ml-2 bg-red-500">{reports.filter(r => r.status === "New").length}</Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Search and filter controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-              <div className="flex-1 w-full sm:w-auto flex gap-2">
+      {/* Data tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="listings">Listings</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="payouts">Payouts</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
+        
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+              <div className="flex flex-1 max-w-sm space-x-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder={`Search ${activeTab}...`}
                     className="pl-8"
@@ -463,15 +602,20 @@ export default function AdminDashboard() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                >
                   <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Filter by status" />
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="banned">Banned</SelectItem>
                     {activeTab === "reports" && (
                       <>
                         <SelectItem value="new">New</SelectItem>
@@ -482,199 +626,107 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Button variant="outline" size="sm" className="flex items-center">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Advanced Filters
-                </Button>
-              </div>
+              <Button>
+                {activeTab === "listings" ? "Add Property" : 
+                 activeTab === "users" ? "Add User" : 
+                 activeTab === "payouts" ? "Process All" : 
+                 "Export Reports"}
+              </Button>
             </div>
 
             {loading ? (
               <TableSkeleton />
             ) : (
-              <>
-                <TabsContent value="listings">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getPaginatedData(listings, "listings").map((listing) => (
-                       <tr key={listing.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{listing.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{listing.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge status={listing.status} type="status" />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{listing.views}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{listing.createdAt}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm">Edit</Button>
-                                <Button variant="ghost" size="sm" className="text-red-600">Delete</Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="users">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getPaginatedData(users, "users").map((user) => (
-                          <tr key={user.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge status={user.status} type="status" />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.joinDate}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm">Edit</Button>
-                                <Button variant="ghost" size="sm" className="text-red-600">Ban</Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="payouts">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Host</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getPaginatedData(payouts, "payouts").map((payout) => (
-                          <tr key={payout.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{payout.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{payout.host}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{payout.amount}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge status={payout.status} type="status" />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{payout.date}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm">View</Button>
-                                <Button variant="ghost" size="sm" className="text-green-600">Process</Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="reports">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getPaginatedData(reports, "reports").map((report) => (
-                          <tr key={report.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{report.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{report.type}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge status={report.status} type="status" />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge status={report.priority} type="priority" />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{report.date}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm">View</Button>
-                                <Button variant="ghost" size="sm" className="text-blue-600">Assign</Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </TabsContent>
-              </>
+              <TabsContent value="listings">
+                <DataTable 
+                  data={dashboardData.listings} 
+                  columns={listingsColumns} 
+                  type="listings"
+                />
+              </TabsContent>
             )}
 
+            <TabsContent value="users">
+              {loading ? (
+                <TableSkeleton />
+              ) : (
+                <DataTable 
+                  data={dashboardData.users} 
+                  columns={usersColumns} 
+                  type="users"
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="payouts">
+              {loading ? (
+                <TableSkeleton />
+              ) : (
+                <DataTable 
+                  data={dashboardData.payouts} 
+                  columns={payoutsColumns} 
+                  type="payouts"
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="reports">
+              {loading ? (
+                <TableSkeleton />
+              ) : (
+                <DataTable 
+                  data={dashboardData.reports} 
+                  columns={reportsColumns} 
+                  type="reports"
+                />
+              )}
+            </TabsContent>
+
             {/* Pagination */}
-            <div className="mt-6">
+            <div className="mt-4">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious href="#" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} />
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    />
                   </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#" onClick={() => setCurrentPage(1)} isActive={currentPage === 1}>1</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#" onClick={() => setCurrentPage(2)} isActive={currentPage === 2}>2</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#" onClick={() => setCurrentPage(3)} isActive={currentPage === 3}>3</PaginationLink>
-                  </PaginationItem>
+                  {[...Array(3)].map((_, i) => {
+                    const page = currentPage + i - (currentPage > 1 ? 1 : 0);
+                    if (page > 0) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink 
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
                   <PaginationItem>
                     <PaginationEllipsis />
                   </PaginationItem>
                   <PaginationItem>
-                    <PaginationNext href="#" onClick={() => setCurrentPage(prev => prev + 1)} />
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(prev => prev + 1)}
+                    />
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
             </div>
-          </Tabs>
-        </CardContent>
-      </Card>
-
+          </CardContent>
+        </Card>
+      </Tabs>
+      
       {/* Footer */}
-      <div className="mt-6 text-center text-sm text-gray-500">
-        <p>© 2025 TravelStay Admin Dashboard. All rights reserved.</p>
-      </div>
+      <footer className="text-center text-gray-500 text-sm mt-6">
+        <p>© 2025 YOLO Matrix Admin Dashboard. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

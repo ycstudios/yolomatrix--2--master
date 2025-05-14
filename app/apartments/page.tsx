@@ -11,98 +11,12 @@ import Footer from "@/components/footer"
 import { useSpring, animated, config } from "react-spring"
 import { motion } from "framer-motion"
 
-// Mock data for apartments
-export const apartmentsData: CategoryItemProps[] = [
-  {
-    id: "manhattan-penthouse",
-    title: "Manhattan Luxury Penthouse",
-    description:
-      "Stunning penthouse with panoramic views of Central Park and the Manhattan skyline, featuring a private terrace.",
-    price: 5000,
-    priceUnit: "night",
-    location: "Manhattan, NY",
-    rating: 4.9,
-    reviews: 42,
-    images: ["/images/Apartments_img/apartments_img1.webp"],
-    amenities: ["gym", "wifi", "parking", "ac", "kitchen", "security"],
-    featured: true,
-    categoryType: "apartments",
-  },
-  {
-    id: "paris-champs-elysees",
-    title: "Champs-Élysées Apartment",
-    description:
-      "Elegant Parisian apartment with views of the Eiffel Tower, located steps from the famous Champs-Élysées.",
-    price: 3500,
-    priceUnit: "night",
-    location: "Paris, France",
-    rating: 4.8,
-    reviews: 36,
-    images: ["/images/Apartments_img/apartments_img2.webp"],
-    amenities: ["wifi", "ac", "kitchen"],
-    categoryType: "apartments",
-  },
-  {
-    id: "london-kensington",
-    title: "Kensington Luxury Flat",
-    description:
-      "Sophisticated apartment in London's prestigious Kensington neighborhood, close to museums and Hyde Park.",
-    price: 4200,
-    priceUnit: "night",
-    location: "London, UK",
-    rating: 4.7,
-    reviews: 29,
-    images: ["/images/Apartments_img/apartments_img3.webp"],
-    amenities: ["gym", "wifi", "parking", "ac", "kitchen"],
-    categoryType: "apartments",
-  },
-  {
-    id: "dubai-marina",
-    title: "Dubai Marina Penthouse",
-    description:
-      "Ultra-modern penthouse with floor-to-ceiling windows offering spectacular views of Dubai Marina and the Palm.",
-    price: 6000,
-    priceUnit: "night",
-    location: "Dubai, UAE",
-    rating: 4.9,
-    reviews: 31,
-    images: ["/images/Apartments_img/apartments_img4.webp"],
-    amenities: ["pool", "gym", "wifi", "parking", "ac", "kitchen", "security"],
-    categoryType: "apartments",
-  },
-  {
-    id: "tokyo-roppongi",
-    title: "Roppongi Hills Apartment",
-    description:
-      "Sleek, modern apartment in the heart of Tokyo's Roppongi district with city views and luxury amenities.",
-    price: 3800,
-    priceUnit: "night",
-    location: "Tokyo, Japan",
-    rating: 4.8,
-    reviews: 24,
-    images: ["/images/Apartments_img/apartments_img5.webp"],
-    amenities: ["gym", "wifi", "ac", "kitchen", "security"],
-    categoryType: "apartments",
-  },
-  {
-    id: "sydney-harbour",
-    title: "Sydney Harbour View Apartment",
-    description:
-      "Contemporary apartment with breathtaking views of Sydney Harbour, the Opera House, and Harbour Bridge.",
-    price: 4500,
-    priceUnit: "night",
-    location: "Sydney, Australia",
-    rating: 4.7,
-    reviews: 33,
-    images: ["/images/Apartments_img/apartments_img6.webp"],
-    amenities: ["pool", "gym", "wifi", "parking", "ac", "kitchen"],
-    categoryType: "apartments",
-  },
-]
-
 export default function ApartmentsPage() {
   const { t } = useLanguage()
-  const [filteredApartments, setFilteredApartments] = useState<CategoryItemProps[]>(apartmentsData)
+  const [apartments, setApartments] = useState<CategoryItemProps[]>([])
+  const [filteredApartments, setFilteredApartments] = useState<CategoryItemProps[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -123,6 +37,49 @@ export default function ApartmentsPage() {
     translateY: 0,
     config: { mass: 1, tension: 280, friction: 60 }
   }))
+
+  // Fetch apartments data from API
+  useEffect(() => {
+    const fetchApartments = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('https://yolo-matrix.onrender.com/appartments')
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Map API data to match the CategoryItemProps structure
+        const formattedData = data.map((apt: any) => ({
+          id: apt.id || String(apt._id),
+          title: apt.title,
+          description: apt.description,
+          price: apt.price,
+          priceUnit: apt.priceUnit || "night",
+          location: apt.location,
+          rating: apt.rating,
+          reviews: apt.reviews,
+          images: apt.images || ["/images/Apartments_img/apartments_img1.webp"],
+          amenities: apt.amenities || [],
+          featured: apt.featured || false,
+          categoryType: "apartments",
+        }))
+        
+        setApartments(formattedData)
+        setFilteredApartments(formattedData)
+        setError(null)
+      } catch (err) {
+        console.error("Failed to fetch apartments:", err)
+        setError("Failed to load apartments. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchApartments()
+  }, [])
 
   // Handle scroll events with passive listener for performance
   useEffect(() => {
@@ -163,8 +120,11 @@ export default function ApartmentsPage() {
     }
   }, [])
 
+  // Apply filters when apartments data or filters change
   useEffect(() => {
-    let filtered = [...apartmentsData]
+    if (apartments.length === 0) return;
+    
+    let filtered = [...apartments]
 
     // Filter by price
     filtered = filtered.filter(
@@ -174,13 +134,15 @@ export default function ApartmentsPage() {
     // Filter by amenities
     if (filters.amenities.length > 0) {
       filtered = filtered.filter((apartment) =>
-        filters.amenities.every((amenity) => apartment.amenities.includes(amenity)),
+        filters.amenities.every((amenity) => apartment.amenities?.includes(amenity)),
       )
     }
 
     // Filter by location
     if (filters.locations.length > 0) {
-      filtered = filtered.filter((apartment) => filters.locations.some((loc) => apartment.location.includes(loc)))
+      filtered = filtered.filter((apartment) => 
+        filters.locations.some((loc) => apartment.location?.includes(loc))
+      )
     }
 
     // Sort
@@ -200,7 +162,7 @@ export default function ApartmentsPage() {
     }
 
     setFilteredApartments(filtered)
-  }, [filters])
+  }, [filters, apartments])
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters)
@@ -322,7 +284,20 @@ export default function ApartmentsPage() {
                 </p>
               </div>
 
-              {filteredApartments.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center min-h-[300px]">
+                  <div className="loader h-8 w-8 rounded-full border-4 border-t-gray-200 border-r-gray-200 border-b-gray-200 border-l-blue-500 animate-spin"></div>
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-8 text-center">
+                  <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+                  <Button
+                    onClick={() => window.location.reload()}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              ) : filteredApartments.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredApartments.map((apartment, index) => (
                     <motion.div 

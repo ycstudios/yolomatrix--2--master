@@ -11,7 +11,7 @@ import Footer from "@/components/footer"
 import { useSpring, animated, config } from "react-spring"
 import { motion } from "framer-motion"
 
-// Mock data for yachts
+// Mock data for yachts as fallback
 export const yachtsData: CategoryItemProps[] = [
   {
     id: "azure-dream",
@@ -97,7 +97,10 @@ export const yachtsData: CategoryItemProps[] = [
 
 export default function YachtsPage() {
   const { t } = useLanguage()
+  const [yachts, setYachts] = useState<CategoryItemProps[]>(yachtsData)
   const [filteredYachts, setFilteredYachts] = useState<CategoryItemProps[]>(yachtsData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -118,6 +121,59 @@ export default function YachtsPage() {
     translateY: 0,
     config: { mass: 1, tension: 280, friction: 60 }
   }))
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchYachts = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const response = await fetch('https://yolo-matrix.onrender.com/yachts', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // Adding a timeout to prevent too long waiting
+          signal: AbortSignal.timeout(10000), // 10 seconds timeout
+        })
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Validate if the data is in the expected format
+        if (Array.isArray(data) && data.length > 0) {
+          // Make sure the fetched data matches our CategoryItemProps structure
+          const processedData = data.map((yacht: any) => ({
+            ...yacht,
+            categoryType: yacht.categoryType || "yachts", // Ensure categoryType is set
+          }))
+          
+          setYachts(processedData)
+          setFilteredYachts(processedData)
+          console.log("Successfully loaded data from API")
+        } else {
+          console.warn("API returned empty or invalid data format, using fallback data")
+          // Use fallback data
+          setYachts(yachtsData)
+          setFilteredYachts(yachtsData)
+        }
+      } catch (err) {
+        console.error("Error fetching yacht data:", err)
+        setError("Failed to load yacht data from server, using fallback data instead")
+        // Use fallback data on error
+        setYachts(yachtsData)
+        setFilteredYachts(yachtsData)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchYachts()
+  }, [])
 
   // Handle scroll events with passive listener for performance
   useEffect(() => {
@@ -159,19 +215,23 @@ export default function YachtsPage() {
   }, [])
 
   useEffect(() => {
-    let filtered = [...yachtsData]
+    let filtered = [...yachts]
 
     // Filter by price
     filtered = filtered.filter((yacht) => yacht.price >= filters.priceRange[0] && yacht.price <= filters.priceRange[1])
 
     // Filter by amenities
     if (filters.amenities.length > 0) {
-      filtered = filtered.filter((yacht) => filters.amenities.every((amenity) => yacht.amenities.includes(amenity)))
+      filtered = filtered.filter((yacht) => 
+        yacht.amenities && filters.amenities.every((amenity) => yacht.amenities.includes(amenity))
+      )
     }
 
     // Filter by location
     if (filters.locations.length > 0) {
-      filtered = filtered.filter((yacht) => filters.locations.some((loc) => yacht.location.includes(loc)))
+      filtered = filtered.filter((yacht) => 
+        filters.locations.some((loc) => yacht.location && yacht.location.includes(loc))
+      )
     }
 
     // Sort
@@ -191,7 +251,7 @@ export default function YachtsPage() {
     }
 
     setFilteredYachts(filtered)
-  }, [filters])
+  }, [filters, yachts])
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters)
@@ -308,12 +368,38 @@ export default function YachtsPage() {
             <div className="lg:w-3/4">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold">{t("category.yachts")}</h2>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {filteredYachts.length} {t("category.results")}
-                </p>
+                <div className="flex justify-between items-center">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {filteredYachts.length} {t("category.results")}
+                  </p>
+                  {error && (
+                    <p className="text-amber-600 text-sm">
+                      <span className="inline-block mr-1">⚠️</span>
+                      {error}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {filteredYachts.length > 0 ? (
+              {isLoading ? (
+                // Loading state
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[1, 2, 3, 4].map((index) => (
+                    <div key={index} className="animate-pulse rounded-xl overflow-hidden">
+                      <div className="bg-gray-200 dark:bg-gray-800 h-64 w-full"></div>
+                      <div className="p-4 space-y-3">
+                        <div className="bg-gray-200 dark:bg-gray-800 h-6 w-3/4 rounded"></div>
+                        <div className="bg-gray-200 dark:bg-gray-800 h-4 w-full rounded"></div>
+                        <div className="bg-gray-200 dark:bg-gray-800 h-4 w-5/6 rounded"></div>
+                        <div className="flex justify-between">
+                          <div className="bg-gray-200 dark:bg-gray-800 h-5 w-1/4 rounded"></div>
+                          <div className="bg-gray-200 dark:bg-gray-800 h-5 w-1/4 rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredYachts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredYachts.map((yacht, index) => (
                     <motion.div 

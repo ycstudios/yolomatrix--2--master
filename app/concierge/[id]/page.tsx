@@ -1,5 +1,4 @@
 "use client"
-
 import { useParams } from "next/navigation"
 import FloatingActions from "@/components/floating-actions"
 import CategoryDetail from "@/components/category-detail"
@@ -57,9 +56,17 @@ export default function ConciergeDetailPage() {
   // For this example, we're using the mock data
 
   return (
-    <main className="min-h-screen pt-16">
-      <CategoryDetail {...conciergeData} />
-      <FloatingActions />
-    </main>
+    <div className="container mx-auto px-4 py-8">
+      <CategoryDetail 
+        data={conciergeData}
+        categoryBaseUrl="https://yolo-matrix.onrender.com/concierge"
+        categoryName="Concierge Services"
+      />
+      <FloatingActions 
+        item={conciergeData}
+        actionType="book"
+        actionText="Book This Service"
+      />
+    </div>
   )
 }

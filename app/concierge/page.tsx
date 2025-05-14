@@ -10,8 +10,9 @@ import { useLanguage } from "@/contexts/language-context"
 import Footer from "@/components/footer"
 import { useSpring, animated, config } from "react-spring"
 import { motion } from "framer-motion"
+import { Loader2 } from "lucide-react"
 
-// Mock data for concierge services
+// Mock data for concierge services as fallback
 export const conciergeData: CategoryItemProps[] = [
   {
     id: "private-events",
@@ -97,7 +98,10 @@ export const conciergeData: CategoryItemProps[] = [
 
 export default function ConciergePage() {
   const { t } = useLanguage()
-  const [filteredServices, setFilteredServices] = useState<CategoryItemProps[]>(conciergeData)
+  const [services, setServices] = useState<CategoryItemProps[]>([])
+  const [filteredServices, setFilteredServices] = useState<CategoryItemProps[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -118,6 +122,49 @@ export default function ConciergePage() {
     translateY: 0,
     config: { mass: 1, tension: 280, friction: 60 }
   }))
+
+  // Fetch concierge data from API
+  useEffect(() => {
+    const fetchConciergeData = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch('https://yolo-matrix.onrender.com/concierge')
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Validate data format - ensure we have required fields
+        const validatedData = data.map((item: any) => ({
+          id: item.id || `service-${Math.random().toString(36).substr(2, 9)}`,
+          title: item.title || "Unnamed Service",
+          description: item.description || "",
+          price: item.price || 0,
+          priceUnit: item.priceUnit || "day",
+          location: item.location || "Global",
+          rating: item.rating || 0,
+          reviews: item.reviews || 0,
+          images: item.images && item.images.length ? item.images : ["/images/package/default.jpg"],
+          amenities: item.amenities || [],
+          featured: item.featured || false,
+          categoryType: item.categoryType || "concierge",
+        }))
+        
+        setServices(validatedData)
+        setError(null)
+      } catch (err) {
+        console.error("Error fetching concierge data:", err)
+        setError("Failed to load concierge services. Using fallback data.")
+        setServices(conciergeData) // Use mock data as fallback
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchConciergeData()
+  }, [])
 
   // Handle scroll events with passive listener for performance
   useEffect(() => {
@@ -158,8 +205,11 @@ export default function ConciergePage() {
     }
   }, [])
 
+  // Apply filters whenever services or filters change
   useEffect(() => {
-    let filtered = [...conciergeData]
+    if (services.length === 0) return;
+    
+    let filtered = [...services]
 
     // Filter by price
     filtered = filtered.filter(
@@ -168,12 +218,20 @@ export default function ConciergePage() {
 
     // Filter by amenities
     if (filters.amenities.length > 0) {
-      filtered = filtered.filter((service) => filters.amenities.every((amenity) => service.amenities.includes(amenity)))
+      filtered = filtered.filter((service) => 
+        filters.amenities.every((amenity) => 
+          service.amenities && service.amenities.includes(amenity)
+        )
+      )
     }
 
     // Filter by location
     if (filters.locations.length > 0) {
-      filtered = filtered.filter((service) => filters.locations.some((loc) => service.location.includes(loc)))
+      filtered = filtered.filter((service) => 
+        filters.locations.some((loc) => 
+          service.location && service.location.includes(loc)
+        )
+      )
     }
 
     // Sort
@@ -193,7 +251,7 @@ export default function ConciergePage() {
     }
 
     setFilteredServices(filtered)
-  }, [filters])
+  }, [services, filters])
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters)
@@ -302,6 +360,12 @@ export default function ConciergePage() {
       {/* Concierge Content */}
       <section className="py-16 bg-white dark:bg-black">
         <div className="container mx-auto px-4">
+          {error && (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 dark:bg-amber-900/30 dark:border-amber-500">
+              <p className="text-amber-700 dark:text-amber-400">{error}</p>
+            </div>
+          )}
+          
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar Filter */}
             <div className="lg:w-1/4">
@@ -312,12 +376,19 @@ export default function ConciergePage() {
             <div className="lg:w-3/4">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold">{t("category.concierge")}</h2>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {filteredServices.length} {t("category.results")}
-                </p>
+                {!isLoading && (
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {filteredServices.length} {t("category.results")}
+                  </p>
+                )}
               </div>
 
-              {filteredServices.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+                  <span className="ml-3 text-gray-600 dark:text-gray-300">Loading services...</span>
+                </div>
+              ) : filteredServices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredServices.map((service, index) => (
                     <motion.div 

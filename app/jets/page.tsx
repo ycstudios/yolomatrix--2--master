@@ -11,95 +11,39 @@ import Footer from "@/components/footer"
 import { useSpring, animated, config } from "react-spring"
 import { motion } from "framer-motion"
 
-// Mock data for jets
-export const jetsData: CategoryItemProps[] = [
+// Sample fallback data in case the API fails
+const FALLBACK_JETS_DATA: CategoryItemProps[] = [
   {
-    id: "gulfstream-g700",
-    title: "Gulfstream G700",
-    description:
-      "The ultimate in business jet luxury with the industry's largest cabin and range of 7,500 nautical miles.",
+    id: "1",
+    title: "Gulfstream G650",
+    description: "Ultra-long-range business jet with exceptional comfort",
     price: 15000,
-    priceUnit: "destination",
-    location: "Global",
+    image: "/images/jet_img/gulfstream_g650.jpg",
     rating: 4.9,
-    reviews: 14,
-    images: ["/images/jet_img/jet_img1.jpg"],
-    amenities: ["wifi", "bar", "staff", "ac"],
-    featured: true,
-    categoryType: "jets",
+    location: "New York",
+    amenities: ["WiFi", "Bedroom", "Conference Room", "Gourmet Kitchen"],
+    type: "jets"
   },
   {
-    id: "bombardier-global-7500",
+    id: "2",
     title: "Bombardier Global 7500",
-    description: "Ultra-long-range business jet featuring four living spaces and a dedicated crew suite.",
-    price: 14000,
-    priceUnit: "destination",
-    location: "Global",
+    description: "Luxury jet with the longest range in its class",
+    price: 18000,
+    image: "/images/jet_img/bombardier_global.jpg",
     rating: 4.8,
-    reviews: 12,
-    images: ["/images/jet_img/jet_img2.jpg"],
-    amenities: ["wifi", "bar", "staff", "ac"],
-    categoryType: "jets",
+    location: "Los Angeles",
+    amenities: ["WiFi", "Master Suite", "Entertainment System", "Full Kitchen"],
+    type: "jets"
   },
-  {
-    id: "dassault-falcon-8x",
-    title: "Dassault Falcon 8X",
-    description: "Tri-jet offering exceptional performance, comfort, and the longest cabin in the Falcon family.",
-    price: 12000,
-    priceUnit: "destination",
-    location: "Global",
-    rating: 4.7,
-    reviews: 10,
-    images: ["/images/jet_img/jet_img3.jpg"],
-    amenities: ["wifi", "bar", "staff", "ac"],
-    categoryType: "jets",
-  },
-  {
-    id: "embraer-praetor-600",
-    title: "Embraer Praetor 600",
-    description:
-      "Super-midsize jet with intercontinental range and advanced technology for a smooth flight experience.",
-    price: 9000,
-    priceUnit: "destination",
-    location: "Global",
-    rating: 4.8,
-    reviews: 9,
-    images: ["/images/jet_img/jet_img4.jpg"],
-    amenities: ["wifi", "staff", "ac"],
-    categoryType: "jets",
-  },
-  {
-    id: "cessna-citation-longitude",
-    title: "Cessna Citation Longitude",
-    description:
-      "Revolutionary cabin experience with the lowest cabin altitude in its class and incredibly quiet interior.",
-    price: 8000,
-    priceUnit: "destination",
-    location: "Global",
-    rating: 4.7,
-    reviews: 11,
-    images: ["/images/jet_img/jet_img5.jpg"],
-    amenities: ["wifi", "staff", "ac"],
-    categoryType: "jets",
-  },
-  {
-    id: "airbus-acj320neo",
-    title: "Airbus ACJ320neo",
-    description: "Corporate jet version of the popular A320neo airliner, offering unmatched space and luxury.",
-    price: 20000,
-    priceUnit: "destination",
-    location: "Global",
-    rating: 4.9,
-    reviews: 8,
-    images: ["/images/jet_img/jet_img6.jpg"],
-    amenities: ["wifi", "bar", "staff", "ac"],
-    categoryType: "jets",
-  },
-]
+  // Add more fallback items if needed
+];
 
 export default function JetsPage() {
   const { t } = useLanguage()
-  const [filteredJets, setFilteredJets] = useState<CategoryItemProps[]>(jetsData)
+  const [jetsData, setJetsData] = useState<CategoryItemProps[]>([])
+  const [filteredJets, setFilteredJets] = useState<CategoryItemProps[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -110,6 +54,38 @@ export default function JetsPage() {
     locations: [] as string[],
     sortBy: "recommended",
   })
+
+  // Fetch jets data from API with improved error handling
+  useEffect(() => {
+    const fetchJetsData = async () => {
+      setLoading(true)
+      try {
+        // Option 1: Use the local API proxy to avoid CORS issues
+        const response = await fetch('/api/proxy/jets')
+        
+        // Option 2: Direct call (only works if backend CORS is configured correctly)
+        // const response = await fetch('https://yolo-matrix.onrender.com/jets')
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`)
+        }
+        const data = await response.json()
+        setJetsData(data)
+        setFilteredJets(data)
+      } catch (err) {
+        console.error('Error fetching jets data:', err)
+        setError('Failed to load jets data. Using fallback data instead.')
+        
+        // Use fallback data to show something to the user
+        setJetsData(FALLBACK_JETS_DATA)
+        setFilteredJets(FALLBACK_JETS_DATA)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchJetsData()
+  }, [])
 
   // Hero animation values based on scroll position
   const [{ scale, blur, opacity, gradientOpacity, translateY }, setHeroSpring] = useSpring(() => ({
@@ -161,6 +137,8 @@ export default function JetsPage() {
   }, [])
 
   useEffect(() => {
+    if (!jetsData.length) return;
+    
     let filtered = [...jetsData]
 
     // Filter by price
@@ -168,7 +146,7 @@ export default function JetsPage() {
 
     // Filter by amenities
     if (filters.amenities.length > 0) {
-      filtered = filtered.filter((jet) => filters.amenities.every((amenity) => jet.amenities.includes(amenity)))
+      filtered = filtered.filter((jet) => filters.amenities.every((amenity) => jet.amenities?.includes(amenity) || false))
     }
 
     // Sort
@@ -180,7 +158,7 @@ export default function JetsPage() {
         filtered.sort((a, b) => b.price - a.price)
         break
       case "rating":
-        filtered.sort((a, b) => b.rating - a.rating)
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0))
         break
       default:
         // Keep default order (recommended)
@@ -188,7 +166,7 @@ export default function JetsPage() {
     }
 
     setFilteredJets(filtered)
-  }, [filters])
+  }, [filters, jetsData])
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters)
@@ -310,7 +288,22 @@ export default function JetsPage() {
                 </p>
               </div>
 
-              {filteredJets.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              ) : error ? (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-8 text-center">
+                  <p className="text-yellow-600 dark:text-yellow-400 mb-4">{error}</p>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">Using fallback data for display purposes.</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              ) : filteredJets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredJets.map((jet, index) => (
                     <motion.div 

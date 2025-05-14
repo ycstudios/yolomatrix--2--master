@@ -1,10 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import FloatingActions from "@/components/floating-actions"
 import CategoryDetail from "@/components/category-detail"
 
-// Mock data for a specific jet
+// Mock data for a specific jet (fallback)
 const jetData = {
   id: "gulfstream-g700",
   title: "Gulfstream G700",
@@ -55,13 +56,58 @@ const jetData = {
 export default function JetDetailPage() {
   const params = useParams()
   const jetId = params.id as string
+  
+  const [jet, setJet] = useState(jetData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // In a real application, you would fetch the data based on the ID
-  // For this example, we're using the mock data
+  useEffect(() => {
+    const fetchJetDetails = async () => {
+      if (!jetId) return
+      
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const response = await fetch(`https://yolo-matrix.onrender.com/jets/${jetId}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch jet details: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        setJet(data)
+        
+      } catch (err) {
+        console.error("Error fetching jet details:", err)
+        setError("Failed to load jet details from API. Using fallback data.")
+        // Keep using the fallback data already set in state
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchJetDetails()
+  }, [jetId])
 
   return (
     <main className="min-h-screen pt-16">
-      <CategoryDetail {...jetData} />
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="container mx-auto px-4 mb-6">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300">
+                <p>{error}</p>
+              </div>
+            </div>
+          )}
+          <CategoryDetail {...jet} />
+        </>
+      )}
       <FloatingActions />
     </main>
   )

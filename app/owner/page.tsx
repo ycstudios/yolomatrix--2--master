@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Phone, PhoneOff, UserX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/components/ui/use-toast"
 
 type CallState = "idle" | "incoming" | "connected"
 
@@ -18,70 +19,122 @@ const OwnerPage = () => {
   const [callState, setCallState] = useState<CallState>("idle")
   const [currentCaller, setCurrentCaller] = useState<string | null>(null)
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const { toast } = useToast()
 
   const ws = useRef<WebSocket | null>(null)
   const peerConnection = useRef<RTCPeerConnection | null>(null)
   const localStream = useRef<MediaStream | null>(null)
   const remoteStream = useRef<MediaStream | null>(null)
-  const localVideo = useRef<HTMLVideoElement | null>(null)
-  const remoteVideo = useRef<HTMLVideoElement | null>(null)
+  const remoteAudio = useRef<HTMLAudioElement | null>(null)
 
-  useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080"
-    ws.current = new WebSocket(wsUrl)
+  // Create a stable reference to the handleCallEnded function
+  const handleCallEnded = useCallback(() => {
+    setCallState("idle")
+    setCurrentCaller(null)
+    setIncomingCall(null)
 
-    ws.current.onopen = () => {
-      console.log("Connected to WebSocket server")
-      if (ws.current) {
-        ws.current.send(JSON.stringify({ type: "register", userId: "owner", role: "owner" }))
-      }
+    // Stop local stream tracks
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => track.stop())
+      localStream.current = null
     }
 
-    ws.current.onmessage = async (event) => {
-      try {
-        const message = JSON.parse(event.data)
-        console.log("Received message:", message)
+    // Close peer connection
+    if (peerConnection.current) {
+      peerConnection.current.close()
+      peerConnection.current = null
+    }
+  }, [])
 
-        switch (message.type) {
-          case "users":
-            setRemoteUsers(message.users)
-            break
-          case "userConnected":
-            console.log(`User connected: ${message.userId}`)
-            setRemoteUsers((prevUsers) => [...prevUsers, message.userId])
-            break
-          case "userDisconnected":
-            console.log(`User disconnected: ${message.userId}`)
-            setRemoteUsers((prevUsers) => prevUsers.filter((user) => user !== message.userId))
-            if (currentCaller === message.userId) {
-              handleCallEnded()
-            }
-            break
-          case "call":
-            handleIncomingCall(message)
-            break
-          case "ice-candidate":
-            handleIceCandidate(message)
-            break
-          case "answer":
-            handleAnswer(message)
-            break
-          case "endCall":
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback(async (event: MessageEvent) => {
+    try {
+      const message = JSON.parse(event.data)
+      console.log("Received message:", message)
+
+      switch (message.type) {
+        case "users":
+          setRemoteUsers(message.users || [])
+          break
+        case "userConnected":
+          console.log(`User connected: ${message.userId}`)
+          setRemoteUsers((prevUsers) => [...prevUsers, message.userId])
+          break
+        case "userDisconnected":
+          console.log(`User disconnected: ${message.userId}`)
+          setRemoteUsers((prevUsers) => prevUsers.filter((user) => user !== message.userId))
+          if (currentCaller === message.userId) {
             handleCallEnded()
-            break
+          }
+          break
+        case "call":
+          handleIncomingCall(message)
+          break
+        case "ice-candidate":
+          handleIceCandidate(message)
+          break
+        case "answer":
+          handleAnswer(message)
+          break
+        case "endCall":
+          handleCallEnded()
+          break
+        default:
+          console.log("Unknown message type:", message.type)
+      }
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error)
+    }
+  }, [currentCaller, handleCallEnded])
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    const setupWebSocket = () => {
+      try {
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080"
+        ws.current = new WebSocket(wsUrl)
+
+        ws.current.onopen = () => {
+          console.log("Connected to WebSocket server")
+          setIsConnected(true)
+          if (ws.current) {
+            ws.current.send(JSON.stringify({ type: "register", userId: "owner", role: "owner" }))
+            toast({
+              title: "Connected to server",
+              description: "You are now connected to the support server",
+            })
+          }
+        }
+
+        ws.current.onmessage = handleWebSocketMessage
+
+        ws.current.onclose = () => {
+          console.log("Disconnected from WebSocket server")
+          setIsConnected(false)
+          toast({
+            title: "Disconnected from server",
+            description: "Connection to support server lost",
+            variant: "destructive",
+          })
+          // Attempt to reconnect after a delay
+          setTimeout(setupWebSocket, 5000)
+        }
+
+        ws.current.onerror = (error) => {
+          console.error("WebSocket error:", error)
+          toast({
+            title: "Connection error",
+            description: "Failed to connect to support server",
+            variant: "destructive",
+          })
         }
       } catch (error) {
-        console.error("Error parsing JSON:", error)
+        console.error("Error setting up WebSocket:", error)
       }
     }
 
-    ws.current.onclose = () => {
-      console.log("Disconnected from WebSocket server")
-    }
-
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error)
-    }
+    setupWebSocket()
 
     return () => {
       if (ws.current) {
@@ -94,23 +147,34 @@ const OwnerPage = () => {
         peerConnection.current.close()
       }
     }
-  }, [currentCaller])
+  }, [handleWebSocketMessage, toast])
 
   const initializePeerConnection = async () => {
     try {
       // Create a new RTCPeerConnection
-      peerConnection.current = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
-      })
-
-      // Get local media stream
-      localStream.current = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      })
-
-      if (localVideo.current) {
-        localVideo.current.srcObject = localStream.current
+      const configuration = {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" }, 
+          { urls: "stun:stun1.l.google.com:19302" }
+        ]
+      }
+      
+      peerConnection.current = new RTCPeerConnection(configuration)
+      
+      // Get local media stream with audio only
+      try {
+        localStream.current = await navigator.mediaDevices.getUserMedia({
+          video: false, // No video for voice-only calls
+          audio: true,
+        })
+      } catch (mediaError) {
+        console.error("Error accessing media devices:", mediaError)
+        toast({
+          title: "Microphone Error",
+          description: "Failed to access your microphone",
+          variant: "destructive",
+        })
+        return null
       }
 
       // Add local tracks to peer connection
@@ -122,12 +186,13 @@ const OwnerPage = () => {
 
       // Create remote stream
       remoteStream.current = new MediaStream()
-      if (remoteVideo.current) {
-        remoteVideo.current.srcObject = remoteStream.current
+      if (remoteAudio.current) {
+        remoteAudio.current.srcObject = remoteStream.current
       }
 
       // Handle incoming tracks
       peerConnection.current.ontrack = (event) => {
+        console.log("Received remote track", event.streams)
         event.streams[0].getTracks().forEach((track) => {
           if (remoteStream.current) {
             remoteStream.current.addTrack(track)
@@ -149,9 +214,28 @@ const OwnerPage = () => {
         }
       }
 
+      // Handle connection state changes
+      peerConnection.current.onconnectionstatechange = () => {
+        console.log("Connection state:", peerConnection.current?.connectionState)
+        if (peerConnection.current?.connectionState === "failed" || 
+            peerConnection.current?.connectionState === "closed") {
+          toast({
+            title: "Connection lost",
+            description: "WebRTC connection failed or closed",
+            variant: "destructive",
+          })
+          handleCallEnded()
+        }
+      }
+
       return peerConnection.current
     } catch (error) {
       console.error("Error initializing peer connection:", error)
+      toast({
+        title: "Connection Error",
+        description: "Failed to initialize voice call",
+        variant: "destructive",
+      })
       return null
     }
   }
@@ -164,6 +248,10 @@ const OwnerPage = () => {
       setIncomingCall({
         userId: message.userId,
         offer: message.offer,
+      })
+      toast({
+        title: "Incoming Call",
+        description: `Voice call from ${message.userId}`,
       })
     } else {
       // Reject call if already in a call
@@ -205,8 +293,17 @@ const OwnerPage = () => {
       )
 
       setCallState("connected")
+      toast({
+        title: "Call Connected",
+        description: `Voice call connected with ${incomingCall.userId}`,
+      })
     } catch (error) {
       console.error("Error accepting call:", error)
+      toast({
+        title: "Call Failed",
+        description: "Failed to establish call connection",
+        variant: "destructive",
+      })
       setCallState("idle")
       setCurrentCaller(null)
       setIncomingCall(null)
@@ -252,23 +349,6 @@ const OwnerPage = () => {
     }
   }
 
-  const handleCallEnded = () => {
-    setCallState("idle")
-    setCurrentCaller(null)
-    setIncomingCall(null)
-
-    // Stop local stream tracks
-    if (localStream.current) {
-      localStream.current.getTracks().forEach((track) => track.stop())
-    }
-
-    // Close peer connection
-    if (peerConnection.current) {
-      peerConnection.current.close()
-      peerConnection.current = null
-    }
-  }
-
   const endCall = () => {
     if (ws.current && currentCaller) {
       ws.current.send(
@@ -293,7 +373,17 @@ const OwnerPage = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Support Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-6">Voice Support Dashboard</h1>
+      
+      {/* Hidden audio element for remote stream */}
+      <audio ref={remoteAudio} autoPlay />
+      
+      {!isConnected && (
+        <div className="mb-6 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
+          <p className="font-bold">Connecting to server...</p>
+          <p>Please wait while we establish a connection.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-6">
@@ -328,7 +418,7 @@ const OwnerPage = () => {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Call Center</h2>
+          <h2 className="text-xl font-semibold mb-4">Voice Call Center</h2>
 
           {callState === "idle" ? (
             <div className="text-center p-8">
@@ -337,7 +427,7 @@ const OwnerPage = () => {
           ) : callState === "incoming" ? (
             <div className="text-center space-y-4">
               <p className="text-lg font-medium">
-                Incoming call from <span className="font-bold">{currentCaller}</span>
+                Incoming voice call from <span className="font-bold">{currentCaller}</span>
               </p>
               <div className="flex justify-center gap-4">
                 <Button
@@ -357,7 +447,7 @@ const OwnerPage = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-lg font-medium">
-                  Connected with <span className="font-bold">{currentCaller}</span>
+                  Voice call connected with <span className="font-bold">{currentCaller}</span>
                 </p>
                 <Button onClick={endCall} variant="destructive" size="sm" className="flex items-center gap-2">
                   <PhoneOff size={16} />
@@ -365,28 +455,14 @@ const OwnerPage = () => {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="relative">
-                  <video
-                    ref={localVideo}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-48 bg-black rounded-md object-cover"
-                  />
-                  <span className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">You</span>
+              <div className="mt-4 p-6 bg-gray-100 rounded-md text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+                    <Phone size={32} className="text-white" />
+                  </div>
                 </div>
-                <div className="relative">
-                  <video
-                    ref={remoteVideo}
-                    autoPlay
-                    playsInline
-                    className="w-full h-48 bg-black rounded-md object-cover"
-                  />
-                  <span className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">
-                    User
-                  </span>
-                </div>
+                <p className="text-lg font-medium">Voice call in progress</p>
+                <p className="text-gray-600 mt-2">Call duration: Active</p>
               </div>
             </div>
           )}

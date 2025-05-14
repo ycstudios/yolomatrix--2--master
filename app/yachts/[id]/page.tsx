@@ -1,10 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import FloatingActions from "@/components/floating-actions"
 import CategoryDetail from "@/components/category-detail"
 
-// Mock data for a specific yacht
+// Mock data for a specific yacht (fallback)
 const yachtData = {
   id: "azure-dream",
   title: "Azure Dream",
@@ -52,13 +53,58 @@ const yachtData = {
 export default function YachtDetailPage() {
   const params = useParams()
   const yachtId = params.id as string
+  
+  const [yacht, setYacht] = useState(yachtData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // In a real application, you would fetch the data based on the ID
-  // For this example, we're using the mock data
+  useEffect(() => {
+    const fetchYachtDetails = async () => {
+      if (!yachtId) return
+      
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const response = await fetch(`https://yolo-matrix.onrender.com/yachts/${yachtId}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch yacht details: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        setYacht(data)
+        
+      } catch (err) {
+        console.error("Error fetching yacht details:", err)
+        setError("Failed to load yacht details from API. Using fallback data.")
+        // Keep using the fallback data already set in state
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchYachtDetails()
+  }, [yachtId])
 
   return (
     <main className="min-h-screen pt-16">
-      <CategoryDetail {...yachtData} />
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="container mx-auto px-4 mb-6">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300">
+                <p>{error}</p>
+              </div>
+            </div>
+          )}
+          <CategoryDetail {...yacht} />
+        </>
+      )}
       <FloatingActions />
     </main>
   )

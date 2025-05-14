@@ -23,10 +23,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LanguageProvider>
-            <Navbar />
-            {children}
-            <CallProvider>{children}</CallProvider>
-            <Toaster />
+            <CallProvider>
+              <Navbar />
+              {children}
+              <Toaster />
+            </CallProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>
